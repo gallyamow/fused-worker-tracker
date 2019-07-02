@@ -20,6 +20,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainService";
 
     private LocationReceiver mLocationReceiver;
+    private PingReceiver mPingsReceiver;
+
     private TextView mTextViewPoints;
     private File mFile;
 
@@ -28,8 +30,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mLocationReceiver = new LocationReceiver();
         mTextViewPoints = findViewById(R.id.textview_points);
+
+        mLocationReceiver = new LocationReceiver();
+        mPingsReceiver = new PingReceiver();
 
         mFile = new File(
                 android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS).getAbsoluteFile(),
@@ -39,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
         // mFile = new File(getApplication().getFilesDir(), "coordinates.log");
 
         subscribeToLocationChanges();
+        subscribeToPings();
         startService();
     }
 
@@ -47,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
 
         unsubscribeToLocationChanges();
+        unsubscribeToPings();
         stopService();
     }
 
@@ -67,11 +73,20 @@ public class MainActivity extends AppCompatActivity {
 
     private void subscribeToLocationChanges() {
         LocalBroadcastManager.getInstance(this).registerReceiver(mLocationReceiver,
-                new IntentFilter(MainService.ACTION_BROADCAST));
+                new IntentFilter(MainService.ACTION_LOCATION_BROADCAST));
     }
 
     private void unsubscribeToLocationChanges() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mLocationReceiver);
+    }
+
+    private void subscribeToPings() {
+        LocalBroadcastManager.getInstance(this).registerReceiver(mPingsReceiver,
+                new IntentFilter(MainService.ACTION_PING_BROADCAST));
+    }
+
+    private void unsubscribeToPings() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mPingsReceiver);
     }
 
     private void appendLog(String s) {
@@ -115,9 +130,7 @@ public class MainActivity extends AppCompatActivity {
         sb.append("; ");
 
         sb.append("elapsed: ");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            sb.append(location.getElapsedRealtimeNanos());
-        }
+        sb.append(location.getElapsedRealtimeNanos());
         sb.append("; ");
 
         sb.append("lon: ");
@@ -153,8 +166,16 @@ public class MainActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             Location location = intent.getParcelableExtra(MainService.EXTRA_LOCATION);
             if (location != null) {
-                appendLog(locationDescription(location));
+                appendLog("location: " + locationDescription(location));
             }
+        }
+    }
+
+    private class PingReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String time = intent.getStringExtra(MainService.EXTRA_TIME);
+            appendLog("ping: " + time);
         }
     }
 }

@@ -17,17 +17,26 @@ import android.os.IBinder;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
+import java.util.Date;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+@SuppressWarnings("FieldCanBeLocal")
 public class MainService extends Service implements LocationListener {
     private static final String TAG = "MainService";
-    static final String ACTION_BROADCAST = "tatar.ru.simpletracker.broadcast";
-    static final String EXTRA_LOCATION = "location";
 
-    @SuppressWarnings("FieldCanBeLocal")
+    static final String ACTION_LOCATION_BROADCAST = "tatar.ru.simpletracker.location_broadcast";
+    static final String ACTION_PING_BROADCAST = "tatar.ru.simpletracker.ping_broadcast";
+
+    static final String EXTRA_LOCATION = "location";
+    static final String EXTRA_TIME = "time";
+
     private static String CHANNEL_ID = "CHANNEL_ID";
-    @SuppressWarnings("FieldCanBeLocal")
     private static int NOTIFICATION_ID = 22222;
 
     private LocationManager mLocationManager;
+    private ScheduledExecutorService pingScheduler;
 
     public MainService() {
     }
@@ -38,7 +47,16 @@ public class MainService extends Service implements LocationListener {
 
         mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         startTracking();
+        startPing();
     }
+
+    // @Override
+    // public void onDestroy() {
+    //     super.onDestroy();
+    //
+    //     stopTracking();
+    //     stopPing();
+    // }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -83,6 +101,16 @@ public class MainService extends Service implements LocationListener {
                 .build();
     }
 
+    private void startPing() {
+        pingScheduler = Executors.newSingleThreadScheduledExecutor();
+        pingScheduler.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                MainService.this.ping();
+            }
+        }, 0, 5, TimeUnit.SECONDS);
+    }
+
     @SuppressLint("MissingPermission")
     private void startTracking() {
         long minTime = 5 * 1000;
@@ -95,11 +123,20 @@ public class MainService extends Service implements LocationListener {
         mLocationManager.removeUpdates(this);
     }
 
+    private void ping() {
+        String time = new Date().toString();
+        Log.d(TAG, "ping " + time);
+
+        Intent intent = new Intent(ACTION_PING_BROADCAST);
+        intent.putExtra(EXTRA_TIME, time);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+    }
+
     @Override
     public void onLocationChanged(Location location) {
         Log.d(TAG, "onLocationChanged " + location.getAccuracy());
 
-        Intent intent = new Intent(ACTION_BROADCAST);
+        Intent intent = new Intent(ACTION_LOCATION_BROADCAST);
         intent.putExtra(EXTRA_LOCATION, location);
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
     }
