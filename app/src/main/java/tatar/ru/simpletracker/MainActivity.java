@@ -1,12 +1,13 @@
 package tatar.ru.simpletracker;
 
-import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
 
@@ -15,10 +16,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Date;
 
-public class MainActivity extends AppCompatActivity implements LocationListener {
+public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainService";
 
+    private LocationReceiver mLocationReceiver;
     private TextView mTextViewPoints;
-    private LocationManager mLocationManager;
     private File mFile;
 
     @Override
@@ -26,53 +28,57 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        mLocationReceiver = new LocationReceiver();
         mTextViewPoints = findViewById(R.id.textview_points);
 
-        mFile = new File(getApplication().getFilesDir(), "coordinates.log");
+        mFile = new File(
+                android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS).getAbsoluteFile(),
+                "coordinates.log"
+        );
 
-        startTracking();
+        // mFile = new File(getApplication().getFilesDir(), "coordinates.log");
+
+        subscribeToLocationChanges();
+        startService();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
-        stopTracking();
+        unsubscribeToLocationChanges();
+        stopService();
     }
 
-    @SuppressLint("MissingPermission")
-    private void startTracking() {
-        appendLog("started - " + (new Date()).toLocaleString());
+    private void startService() {
+        Intent serviceIntent = new Intent(this, MainService.class);
 
-        long minTime = 5 * 1000;
-
-        mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, minTime, 0, this);
-        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTime, 0, this);
-        // mLocationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, minTime, 0, this);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
     }
 
-    private void stopTracking() {
-        mLocationManager.removeUpdates(this);
+    private void stopService() {
+        Intent serviceIntent = new Intent(this, MainService.class);
+        stopService(serviceIntent);
     }
 
-    public void onLocationChanged(Location location) {
-        appendLog(locationDescription(location));
+    private void subscribeToLocationChanges() {
+        LocalBroadcastManager.getInstance(this).registerReceiver(mLocationReceiver,
+                new IntentFilter(MainService.ACTION_BROADCAST));
     }
 
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-    }
-
-    public void onProviderEnabled(String provider) {
-    }
-
-    public void onProviderDisabled(String provider) {
+    private void unsubscribeToLocationChanges() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mLocationReceiver);
     }
 
     private void appendLog(String s) {
         String line = "\n" + s;
         writeToFile(line);
-        mTextViewPoints.append(line);
+
+        mTextViewPoints.append(line + "\n");
     }
 
     private void writeToFile(String s) {
@@ -140,5 +146,15 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         // sb.append("; ");
 
         return sb.toString();
+    }
+
+    private class LocationReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Location location = intent.getParcelableExtra(MainService.EXTRA_LOCATION);
+            if (location != null) {
+                appendLog(locationDescription(location));
+            }
+        }
     }
 }
