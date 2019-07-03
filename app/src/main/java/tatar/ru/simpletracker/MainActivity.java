@@ -7,8 +7,9 @@ import android.content.IntentFilter;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.app.AppCompatActivity;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.appcompat.app.AppCompatActivity;
+import android.text.format.DateFormat;
 import android.widget.TextView;
 
 import java.io.File;
@@ -18,6 +19,7 @@ import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainService";
+    private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ssZ";
 
     private LocationReceiver mLocationReceiver;
     private PingReceiver mPingsReceiver;
@@ -115,48 +117,23 @@ public class MainActivity extends AppCompatActivity {
     private String locationDescription(Location location) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("clock: ");
-        sb.append((new Date()).toLocaleString());
+        sb.append("time: ");
+        sb.append(DateFormat.format(DATE_FORMAT, new Date()));
         sb.append("; ");
 
-        sb.append("getProvider: ");
+        sb.append("provider: ");
         sb.append(location.getProvider());
         sb.append("; ");
 
-        sb.append("getTime: ");
+        sb.append("time: ");
         sb.append(location.getTime());
         sb.append("-");
-        sb.append((new Date(location.getTime())).toLocaleString());
-        sb.append("; ");
-
-        sb.append("elapsed: ");
-        sb.append(location.getElapsedRealtimeNanos());
-        sb.append("; ");
-
-        sb.append("lon: ");
-        sb.append(location.getLongitude());
-        sb.append("; ");
-
-        sb.append("lat: ");
-        sb.append(location.getLatitude());
+        sb.append(DateFormat.format(DATE_FORMAT, new Date(location.getTime())));
         sb.append("; ");
 
         sb.append("acc: ");
         sb.append(location.getAccuracy());
         sb.append("; ");
-
-        sb.append("bearing: ");
-        sb.append(location.getBearing());
-        sb.append("; ");
-
-
-        sb.append("speed: ");
-        sb.append(location.getSpeed());
-        sb.append("; ");
-
-        // sb.append("getExtras: ");
-        // sb.append(location.getExtras().toString());
-        // sb.append("; ");
 
         return sb.toString();
     }
