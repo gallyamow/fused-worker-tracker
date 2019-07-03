@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.util.Date;
@@ -67,6 +68,56 @@ public class MainService extends Service implements LocationListener {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
+    @Override
+    public void onLocationChanged(Location location) {
+        sendLocation(location);
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+        Log.d(TAG, "onStatusChanged");
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+        Log.d(TAG, "onProviderEnabled");
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
+        Log.d(TAG, "onProviderDisabled");
+    }
+
+    @SuppressLint("MissingPermission")
+    private void startTracking() {
+        long minTime = 5 * 1000;
+
+        mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, minTime, 0, this);
+        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTime, 0, this);
+    }
+
+    private void stopTracking() {
+        mLocationManager.removeUpdates(this);
+    }
+
+    private void sendPing() {
+        String message = "SERVICE PING: " + Utils.formateDate(new Date());
+        sendMessage(message);
+    }
+
+    private void sendLocation(@NonNull Location location) {
+        String message = "SERVICE LOCATION: " + Utils.locationToString(location);
+        sendMessage(message);
+    }
+
+    private void sendMessage(String message) {
+        Log.d(TAG, message);
+
+        Intent intent = new Intent(Constants.ACTION_MESSAGE_BROADCAST);
+        intent.putExtra(Constants.EXTRA_MESSAGE, message);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+    }
+
     private void makeForeground() {
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         NotificationChannel notificationChannel = new NotificationChannel(
@@ -101,54 +152,9 @@ public class MainService extends Service implements LocationListener {
         pingScheduler.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
-                MainService.this.ping();
+                MainService.this.sendPing();
             }
         }, Constants.PING_DELAY, Constants.PING_DELAY, TimeUnit.SECONDS);
     }
 
-    @SuppressLint("MissingPermission")
-    private void startTracking() {
-        long minTime = 5 * 1000;
-
-        mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, minTime, 0, this);
-        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTime, 0, this);
-    }
-
-    private void stopTracking() {
-        mLocationManager.removeUpdates(this);
-    }
-
-    private void ping() {
-        String message = "SERVICE PING: " + Utils.formateDate(new Date());
-        sendMessage(message);
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        String message = "SERVICE LOCATION: " + Utils.locationToString(location);
-        sendMessage(message);
-    }
-
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-        Log.d(TAG, "onStatusChanged");
-    }
-
-    @Override
-    public void onProviderEnabled(String provider) {
-        Log.d(TAG, "onProviderEnabled");
-    }
-
-    @Override
-    public void onProviderDisabled(String provider) {
-        Log.d(TAG, "onProviderDisabled");
-    }
-
-    private void sendMessage(String message) {
-        Log.d(TAG, message);
-
-        Intent intent = new Intent(Constants.ACTION_MESSAGE_BROADCAST);
-        intent.putExtra(Constants.EXTRA_MESSAGE, message);
-        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
-    }
 }

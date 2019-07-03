@@ -21,8 +21,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-import tatar.ru.simpletracker.workers.LocationsWorker;
-
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainService";
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ssZ";
@@ -88,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
         mWorkManager.enqueue(
                 new PeriodicWorkRequest.Builder(
                         LocationsWorker.class,
-                        LocationsWorker.RUN_INTERVAL,
+                        LocationsWorker.RUN_INTERVAL_SECONDS,
                         TimeUnit.SECONDS
                 ).build()
         );
