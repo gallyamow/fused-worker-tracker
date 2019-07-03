@@ -4,25 +4,32 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.appcompat.app.AppCompatActivity;
-import android.text.format.DateFormat;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Date;
+import java.util.concurrent.TimeUnit;
+
+import tatar.ru.simpletracker.workers.LocationsWorker;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainService";
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ssZ";
+    private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 
-    private LocationReceiver mLocationReceiver;
-    private PingReceiver mPingsReceiver;
+    private WorkManager mWorkManager;
+    private MessageReceiver mMessageReceiver;
 
     private TextView mTextViewPoints;
     private File mFile;
@@ -33,28 +40,31 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mTextViewPoints = findViewById(R.id.textview_points);
-
-        mLocationReceiver = new LocationReceiver();
-        mPingsReceiver = new PingReceiver();
-
+        mMessageReceiver = new MessageReceiver();
         mFile = new File(
                 android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS).getAbsoluteFile(),
                 "coordinates.log"
         );
 
-        // mFile = new File(getApplication().getFilesDir(), "coordinates.log");
-
-        subscribeToLocationChanges();
-        subscribeToPings();
+        subscribeToMessage();
         startService();
+        startWorker();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        if (!checkPlayServices()) {
+            appendLog("You need to install Google Play Services to use the App properly");
+        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
-        unsubscribeToLocationChanges();
-        unsubscribeToPings();
+        unsubscribeFromMessage();
         stopService();
     }
 
@@ -73,22 +83,23 @@ public class MainActivity extends AppCompatActivity {
         stopService(serviceIntent);
     }
 
-    private void subscribeToLocationChanges() {
-        LocalBroadcastManager.getInstance(this).registerReceiver(mLocationReceiver,
-                new IntentFilter(MainService.ACTION_LOCATION_BROADCAST));
+    private void startWorker() {
+        mWorkManager = WorkManager.getInstance();
+        mWorkManager.enqueue(
+                new PeriodicWorkRequest.Builder(
+                        LocationsWorker.class,
+                        LocationsWorker.RUN_INTERVAL,
+                        TimeUnit.SECONDS
+                ).build()
+        );
     }
 
-    private void unsubscribeToLocationChanges() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mLocationReceiver);
+    private void subscribeToMessage() {
+        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, new IntentFilter(Constants.ACTION_MESSAGE_BROADCAST));
     }
 
-    private void subscribeToPings() {
-        LocalBroadcastManager.getInstance(this).registerReceiver(mPingsReceiver,
-                new IntentFilter(MainService.ACTION_PING_BROADCAST));
-    }
-
-    private void unsubscribeToPings() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mPingsReceiver);
+    private void unsubscribeFromMessage() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
     }
 
     private void appendLog(String s) {
@@ -114,45 +125,28 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private String locationDescription(Location location) {
-        StringBuilder sb = new StringBuilder();
+    private boolean checkPlayServices() {
+        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
+        int resultCode = apiAvailability.isGooglePlayServicesAvailable(this);
 
-        sb.append("time: ");
-        sb.append(DateFormat.format(DATE_FORMAT, new Date()));
-        sb.append("; ");
-
-        sb.append("provider: ");
-        sb.append(location.getProvider());
-        sb.append("; ");
-
-        sb.append("time: ");
-        sb.append(location.getTime());
-        sb.append("-");
-        sb.append(DateFormat.format(DATE_FORMAT, new Date(location.getTime())));
-        sb.append("; ");
-
-        sb.append("acc: ");
-        sb.append(location.getAccuracy());
-        sb.append("; ");
-
-        return sb.toString();
-    }
-
-    private class LocationReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            Location location = intent.getParcelableExtra(MainService.EXTRA_LOCATION);
-            if (location != null) {
-                appendLog("location: " + locationDescription(location));
+        if (resultCode != ConnectionResult.SUCCESS) {
+            if (apiAvailability.isUserResolvableError(resultCode)) {
+                apiAvailability.getErrorDialog(this, resultCode, PLAY_SERVICES_RESOLUTION_REQUEST);
+            } else {
+                finish();
             }
+
+            return false;
         }
+
+        return true;
     }
 
-    private class PingReceiver extends BroadcastReceiver {
+    private class MessageReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            String time = intent.getStringExtra(MainService.EXTRA_TIME);
-            appendLog("ping: " + time);
+            String message = intent.getStringExtra(Constants.EXTRA_MESSAGE);
+            appendLog(message);
         }
     }
 }

@@ -14,8 +14,9 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.IBinder;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.util.Date;
 import java.util.concurrent.Executors;
@@ -25,12 +26,6 @@ import java.util.concurrent.TimeUnit;
 @SuppressWarnings("FieldCanBeLocal")
 public class MainService extends Service implements LocationListener {
     private static final String TAG = "MainService";
-
-    static final String ACTION_LOCATION_BROADCAST = "tatar.ru.simpletracker.location_broadcast";
-    static final String ACTION_PING_BROADCAST = "tatar.ru.simpletracker.ping_broadcast";
-
-    static final String EXTRA_LOCATION = "location";
-    static final String EXTRA_TIME = "time";
 
     private static String CHANNEL_ID = "CHANNEL_ID";
     private static int NOTIFICATION_ID = 22222;
@@ -108,7 +103,7 @@ public class MainService extends Service implements LocationListener {
             public void run() {
                 MainService.this.ping();
             }
-        }, 0, 5, TimeUnit.SECONDS);
+        }, Constants.PING_DELAY, Constants.PING_DELAY, TimeUnit.SECONDS);
     }
 
     @SuppressLint("MissingPermission")
@@ -124,21 +119,14 @@ public class MainService extends Service implements LocationListener {
     }
 
     private void ping() {
-        String time = new Date().toString();
-        Log.d(TAG, "ping " + time);
-
-        Intent intent = new Intent(ACTION_PING_BROADCAST);
-        intent.putExtra(EXTRA_TIME, time);
-        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+        String message = "SERVICE PING: " + Utils.formateDate(new Date());
+        sendMessage(message);
     }
 
     @Override
     public void onLocationChanged(Location location) {
-        Log.d(TAG, "onLocationChanged " + location.getAccuracy());
-
-        Intent intent = new Intent(ACTION_LOCATION_BROADCAST);
-        intent.putExtra(EXTRA_LOCATION, location);
-        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+        String message = "SERVICE LOCATION: " + Utils.locationToString(location);
+        sendMessage(message);
     }
 
     @Override
@@ -154,5 +142,13 @@ public class MainService extends Service implements LocationListener {
     @Override
     public void onProviderDisabled(String provider) {
         Log.d(TAG, "onProviderDisabled");
+    }
+
+    private void sendMessage(String message) {
+        Log.d(TAG, message);
+
+        Intent intent = new Intent(Constants.ACTION_MESSAGE_BROADCAST);
+        intent.putExtra(Constants.EXTRA_MESSAGE, message);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
     }
 }

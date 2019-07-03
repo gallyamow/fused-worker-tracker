@@ -1,0 +1,1 @@
+Example of using batch mode Fused Location Provider and WorkerManager
