@@ -33,7 +33,7 @@ public class Utils {
     }
 
     public static String formateDate(@NonNull Date date) {
-        return (String) DateFormat.format("yyyy-MM-dd hh:mm:ss a", date);
+        return (String) DateFormat.format("yyyy-MM-dd hh:mm:ss", date);
         //return (String) DateFormat.getDateTimeInstance(DATE_FORMAT, date);
     }
 }

@@ -12,7 +12,6 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
-import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationAvailability;
 import com.google.android.gms.location.LocationCallback;
@@ -26,19 +25,11 @@ import java.util.List;
 public class LocationsWorker extends Worker {
     private static final String TAG = LocationsWorker.class.getSimpleName();
 
-    /**
-     * Must be greater than or equal to PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS (900 000)
-     */
-    public static int RUN_INTERVAL_SECONDS = 1000;
-
-    @SuppressWarnings("FieldCanBeLocal")
-    private static int LOCATION_UPDATE_INTERVAL = 5000;
-
-    private GoogleApiClient mGoogleApiClient;
     private FusedLocationProviderClient mFusedLocationClient;
 
     @SuppressWarnings("FieldCanBeLocal")
     private LocationRequest mLocationRequest;
+    private DeferredLocationCallback mDeferredLocationCallback;
 
     public LocationsWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -51,26 +42,8 @@ public class LocationsWorker extends Worker {
     @Override
     public Result doWork() {
         try {
-            // mGoogleApiClient.connect();
             sendPing();
-
-            mFusedLocationClient.requestLocationUpdates(mLocationRequest, new LocationCallback() {
-                @Override
-                public void onLocationResult(LocationResult locationResult) {
-                    super.onLocationResult(locationResult);
-                    List<Location> locations = locationResult.getLocations();
-                    Log.d(TAG, "locations size: " + locations.size());
-
-                    for (Location location : locations) {
-                        sendLocation(location);
-                    }
-                }
-
-                @Override
-                public void onLocationAvailability(LocationAvailability locationAvailability) {
-                    super.onLocationAvailability(locationAvailability);
-                }
-            }, Looper.getMainLooper());
+            requestLocationUpdates();
 
             return Result.success();
         } catch (Exception exception) {
@@ -79,61 +52,25 @@ public class LocationsWorker extends Worker {
         }
     }
 
-
-    // @Override
-    // public void onConnectionSuspended(int i) {
-    //     Log.d(TAG, "onConnectionSuspended");
-    //
-    // }
-    //
-    // @Override
-    // public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-    //     Log.d(TAG, "onConnectionFailed");
-    // }
-    //
-    // @Override
-    // public void onLocationChanged(Location location) {
-    //     Log.d(TAG, "onLocationChanged");
-    // }
-    //
-    // @Override
-    // public void onStatusChanged(String provider, int status, Bundle extras) {
-    //     Log.d(TAG, "onStatusChanged");
-    // }
-    //
-    // @Override
-    // public void onProviderEnabled(String provider) {
-    //     Log.d(TAG, "onProviderEnabled");
-    // }
-    //
-    // @Override
-    // public void onProviderDisabled(String provider) {
-    //
-    // }
-
     private void buildLocationRequest(Context context) {
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context);
 
-        // mGoogleApiClient = new GoogleApiClient.Builder(context)
-        //         .addApi(LocationServices.API)
-        //         .addConnectionCallbacks(this)
-        //         .addOnConnectionFailedListener(this)
-        //         .build();
-
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(LOCATION_UPDATE_INTERVAL);
-        mLocationRequest.setFastestInterval(LOCATION_UPDATE_INTERVAL);
+        mLocationRequest.setInterval(Constants.LOCATION_UPDATE_INTERVAL_MS);
+        mLocationRequest.setFastestInterval(Constants.LOCATION_UPDATE_INTERVAL_MS);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        mLocationRequest.setMaxWaitTime(RUN_INTERVAL_SECONDS);
+        mLocationRequest.setMaxWaitTime(Constants.WORKER_RUN_INTERVAL_MS);
 
-        // mGoogleApiClient.connect();
+        mDeferredLocationCallback = new DeferredLocationCallback();
     }
 
-    private void unsubscribe() {
-        // if (mGoogleApiClient.isConnected()) {
-        //     LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
-        //     mGoogleApiClient.disconnect();
-        // }
+    @SuppressLint("MissingPermission")
+    private void requestLocationUpdates() {
+        mFusedLocationClient.requestLocationUpdates(
+                mLocationRequest,
+                mDeferredLocationCallback,
+                Looper.getMainLooper()
+        );
     }
 
     private void sendPing() {
@@ -152,5 +89,27 @@ public class LocationsWorker extends Worker {
         Intent intent = new Intent(Constants.ACTION_MESSAGE_BROADCAST);
         intent.putExtra(Constants.EXTRA_MESSAGE, message);
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+    }
+
+    private class DeferredLocationCallback extends LocationCallback {
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            super.onLocationResult(locationResult);
+
+            // получаем накопленное и отписываемся от обновлений до след. запуска
+            List<Location> locations = locationResult.getLocations();
+            mFusedLocationClient.flushLocations();
+
+            Log.d(TAG, "locations size: " + locations.size());
+
+            for (Location location : locations) {
+                sendLocation(location);
+            }
+        }
+
+        @Override
+        public void onLocationAvailability(LocationAvailability locationAvailability) {
+            super.onLocationAvailability(locationAvailability);
+        }
     }
 }

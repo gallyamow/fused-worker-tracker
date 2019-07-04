@@ -86,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
         mWorkManager.enqueue(
                 new PeriodicWorkRequest.Builder(
                         LocationsWorker.class,
-                        LocationsWorker.RUN_INTERVAL_SECONDS,
+                        Constants.WORKER_RUN_INTERVAL_MS,
                         TimeUnit.SECONDS
                 ).build()
         );
