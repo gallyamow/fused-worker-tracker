@@ -2,6 +2,8 @@ package tatar.ru.simpletracker;
 
 @SuppressWarnings("WeakerAccess")
 public class Constants {
+    public static final String LOCATION_WORKER_NAME = "tatar.ru.simpletracker.location_worker";
+
     public static final String ACTION_MESSAGE_BROADCAST = "tatar.ru.simpletracker.message";
     public static final String EXTRA_MESSAGE = "message";
 

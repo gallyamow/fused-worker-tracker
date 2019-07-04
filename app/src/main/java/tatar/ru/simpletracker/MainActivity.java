@@ -10,6 +10,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
@@ -82,13 +83,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startWorker() {
+        PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
+                LocationsWorker.class,
+                Constants.WORKER_RUN_INTERVAL_MS,
+                TimeUnit.MICROSECONDS,
+                Math.round(Constants.WORKER_RUN_INTERVAL_MS * 0.75),
+                TimeUnit.MICROSECONDS
+        )
+                .addTag(Constants.LOCATION_WORKER_NAME)
+                .build();
+
         mWorkManager = WorkManager.getInstance();
-        mWorkManager.enqueue(
-                new PeriodicWorkRequest.Builder(
-                        LocationsWorker.class,
-                        Constants.WORKER_RUN_INTERVAL_MS,
-                        TimeUnit.SECONDS
-                ).build()
+        mWorkManager.enqueueUniquePeriodicWork(
+                Constants.LOCATION_WORKER_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                request
         );
     }
 

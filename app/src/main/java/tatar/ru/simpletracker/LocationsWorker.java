@@ -41,17 +41,23 @@ public class LocationsWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
+        Log.d(TAG, "work start");
+
+        Result res;
         try {
             sendPing();
-            requestLocationUpdates();
-
-            return Result.success();
+            mFusedLocationClient.flushLocations();
+            res = Result.success();
         } catch (Exception exception) {
             Log.e(TAG, "worker error", exception);
-            return Result.failure();
+            res = Result.failure();
         }
+
+        Log.d(TAG, "work end");
+        return res;
     }
 
+    @SuppressLint("MissingPermission")
     private void buildLocationRequest(Context context) {
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context);
 
@@ -62,10 +68,7 @@ public class LocationsWorker extends Worker {
         mLocationRequest.setMaxWaitTime(Constants.WORKER_RUN_INTERVAL_MS);
 
         mDeferredLocationCallback = new DeferredLocationCallback();
-    }
 
-    @SuppressLint("MissingPermission")
-    private void requestLocationUpdates() {
         mFusedLocationClient.requestLocationUpdates(
                 mLocationRequest,
                 mDeferredLocationCallback,
@@ -98,7 +101,7 @@ public class LocationsWorker extends Worker {
 
             // получаем накопленное и отписываемся от обновлений до след. запуска
             List<Location> locations = locationResult.getLocations();
-            mFusedLocationClient.flushLocations();
+            mFusedLocationClient.removeLocationUpdates(mDeferredLocationCallback);
 
             Log.d(TAG, "locations size: " + locations.size());
 
