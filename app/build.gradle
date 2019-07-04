@@ -4,7 +4,7 @@ android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "tatar.ru.simpletracker"
-        minSdkVersion 26
+        minSdkVersion 23
         targetSdkVersion 28
         versionCode 3
         versionName "3.0"
