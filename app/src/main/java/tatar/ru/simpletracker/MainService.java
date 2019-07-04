@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("FieldCanBeLocal")
 public class MainService extends Service implements LocationListener {
-    private static final String TAG = "MainService";
+    private static final String TAG = MainService.class.getSimpleName();
 
     private static String CHANNEL_ID = "CHANNEL_ID";
     private static int NOTIFICATION_ID = 22222;
@@ -42,6 +42,7 @@ public class MainService extends Service implements LocationListener {
     @Override
     public void onCreate() {
         super.onCreate();
+        Log.d(TAG, "onCreate");
 
         mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         startTracking();
@@ -58,10 +59,11 @@ public class MainService extends Service implements LocationListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        super.onStartCommand(intent, flags, startId);
+        Log.d(TAG, "onStartCommand");
+        int res = super.onStartCommand(intent, flags, startId);
 
         makeForeground();
-        return START_REDELIVER_INTENT;
+        return res;
     }
 
     @Override
