@@ -23,6 +23,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import tatar.ru.simpletracker.data.Position;
+import tatar.ru.simpletracker.data.PositionDao;
+
 public class LocationsWorker extends Worker {
     private static final String TAG = LocationsWorker.class.getSimpleName();
 
@@ -91,6 +94,15 @@ public class LocationsWorker extends Worker {
         Utils.sendMessage(getApplicationContext(), message);
     }
 
+    private void saveLocations(List<Location> locations) {
+        // todo: is App.instance accessible?
+        PositionDao positionDao = App.getDatabase(getApplicationContext()).positionDao();
+
+        for (Location location : locations) {
+            positionDao.insert(Position.fromLocation("worker", location));
+        }
+    }
+
     private class DeferredLocationCallback extends LocationCallback {
         @Override
         public void onLocationResult(LocationResult locationResult) {
@@ -103,6 +115,7 @@ public class LocationsWorker extends Worker {
 
             Log.d(TAG, "locations size: " + locations.size());
 
+            saveLocations(locations);
             for (Location location : locations) {
                 sendLocation(location);
             }

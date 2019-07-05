@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
 import android.text.format.DateFormat;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -42,6 +43,8 @@ public class Utils {
     }
 
     public static void sendMessage(Context context, String message) {
+        Log.d("MESSAGE", message);
+
         Intent intent = new Intent(Constants.ACTION_MESSAGE_BROADCAST);
         intent.putExtra(Constants.EXTRA_MESSAGE, message);
         LocalBroadcastManager.getInstance(context).sendBroadcast(intent);

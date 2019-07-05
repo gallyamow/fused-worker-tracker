@@ -26,6 +26,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import tatar.ru.simpletracker.data.Position;
+import tatar.ru.simpletracker.data.PositionDao;
+
 @SuppressWarnings("FieldCanBeLocal")
 public class MainService extends Service implements LocationListener {
     private static final String TAG = MainService.class.getSimpleName();
@@ -35,6 +38,7 @@ public class MainService extends Service implements LocationListener {
 
     private LocationManager mLocationManager;
     private ScheduledExecutorService mPingScheduler;
+    private PositionDao mPositionDao;
 
     public MainService() {
     }
@@ -45,6 +49,8 @@ public class MainService extends Service implements LocationListener {
         Log.d(TAG, "onCreate");
 
         mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        mPositionDao = App.getDatabase(getApplicationContext()).positionDao();
+
         startTracking();
         startPing();
     }
@@ -66,6 +72,7 @@ public class MainService extends Service implements LocationListener {
 
     @Override
     public void onLocationChanged(Location location) {
+        saveLocation(location);
         sendLocation(location);
     }
 
@@ -108,6 +115,10 @@ public class MainService extends Service implements LocationListener {
         Utils.sendMessage(getApplicationContext(), message);
     }
 
+    private void saveLocation(@NonNull Location location) {
+        mPositionDao.insert(Position.fromLocation("service", location));
+    }
+
     private void makeForeground() {
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         assert notificationManager != null;
@@ -147,7 +158,7 @@ public class MainService extends Service implements LocationListener {
         }
 
         mPingScheduler = Executors.newSingleThreadScheduledExecutor();
-        mPingScheduler.scheduleAtFixedRate(() -> MainService.this.sendPing(), Constants.PING_DELAY_MS, Constants.PING_DELAY_MS, TimeUnit.MILLISECONDS);
+        mPingScheduler.scheduleAtFixedRate(MainService.this::sendPing, Constants.PING_DELAY_MS, Constants.PING_DELAY_MS, TimeUnit.MILLISECONDS);
     }
 
 }
