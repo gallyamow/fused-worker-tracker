@@ -14,8 +14,6 @@ import java.util.concurrent.TimeUnit;
 public class App extends Application {
     private static final String TAG = App.class.getSimpleName();
 
-    private WorkManager mWorkManager;
-
     @Override
     public void onCreate() {
         super.onCreate();
@@ -54,7 +52,7 @@ public class App extends Application {
                 .addTag(Constants.LOCATION_WORKER_NAME)
                 .build();
 
-        mWorkManager = WorkManager.getInstance();
+        WorkManager mWorkManager = WorkManager.getInstance();
         mWorkManager.enqueueUniquePeriodicWork(
                 Constants.LOCATION_WORKER_NAME,
                 ExistingPeriodicWorkPolicy.KEEP,

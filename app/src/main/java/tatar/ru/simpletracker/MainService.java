@@ -19,7 +19,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.core.app.NotificationCompat;
 
 import java.util.Date;
 import java.util.concurrent.Executors;
@@ -48,14 +48,6 @@ public class MainService extends Service implements LocationListener {
         startTracking();
         startPing();
     }
-
-    // @Override
-    // public void onDestroy() {
-    //     super.onDestroy();
-    //
-    //     stopTracking();
-    //     stopPing();
-    // }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -107,37 +99,32 @@ public class MainService extends Service implements LocationListener {
     }
 
     private void sendPing() {
-        String message = "SERVICE PING: " + Utils.formateDate(new Date());
-        sendMessage(message);
+        String message = "SERVICE PING: " + Utils.formatDate(new Date());
+        Utils.sendMessage(getApplicationContext(), message);
     }
 
     private void sendLocation(@NonNull Location location) {
         String message = "SERVICE LOCATION: " + Utils.locationToString(location);
-        sendMessage(message);
-    }
-
-    private void sendMessage(String message) {
-        Log.d(TAG, message);
-
-        Intent intent = new Intent(Constants.ACTION_MESSAGE_BROADCAST);
-        intent.putExtra(Constants.EXTRA_MESSAGE, message);
-        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+        Utils.sendMessage(getApplicationContext(), message);
     }
 
     private void makeForeground() {
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        NotificationChannel notificationChannel = new NotificationChannel(
-                CHANNEL_ID, CHANNEL_ID, NotificationManager.IMPORTANCE_HIGH
-        );
-
         assert notificationManager != null;
-        notificationManager.createNotificationChannel(notificationChannel);
-        Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID);
 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID, CHANNEL_ID, NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            notificationManager.createNotificationChannel(channel);
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID);
         startForeground(NOTIFICATION_ID, buildNotification(builder));
     }
 
-    private Notification buildNotification(Notification.Builder builder) {
+    private Notification buildNotification(NotificationCompat.Builder builder) {
         Intent i = new Intent(this, MainActivity.class);
         i.setAction(Intent.ACTION_MAIN);
         i.addCategory(Intent.CATEGORY_LAUNCHER);
@@ -160,12 +147,7 @@ public class MainService extends Service implements LocationListener {
         }
 
         mPingScheduler = Executors.newSingleThreadScheduledExecutor();
-        mPingScheduler.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                MainService.this.sendPing();
-            }
-        }, Constants.PING_DELAY_MS, Constants.PING_DELAY_MS, TimeUnit.MILLISECONDS);
+        mPingScheduler.scheduleAtFixedRate(() -> MainService.this.sendPing(), Constants.PING_DELAY_MS, Constants.PING_DELAY_MS, TimeUnit.MILLISECONDS);
     }
 
 }

@@ -2,13 +2,11 @@ package tatar.ru.simpletracker;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.Intent;
 import android.location.Location;
 import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
@@ -18,9 +16,12 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class LocationsWorker extends Worker {
     private static final String TAG = LocationsWorker.class.getSimpleName();
@@ -33,8 +34,6 @@ public class LocationsWorker extends Worker {
 
     public LocationsWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
-
-        buildLocationRequest(context);
     }
 
     @SuppressLint("MissingPermission")
@@ -44,11 +43,13 @@ public class LocationsWorker extends Worker {
         Log.d(TAG, "work start");
 
         Result res;
+
         try {
             sendPing();
-            mFusedLocationClient.flushLocations();
+            requestLocationsAndWait();
+
             res = Result.success();
-        } catch (Exception exception) {
+        } catch (ExecutionException | InterruptedException exception) {
             Log.e(TAG, "worker error", exception);
             res = Result.failure();
         }
@@ -58,7 +59,9 @@ public class LocationsWorker extends Worker {
     }
 
     @SuppressLint("MissingPermission")
-    private void buildLocationRequest(Context context) {
+    private void requestLocationsAndWait() throws ExecutionException, InterruptedException {
+        Context context = getApplicationContext();
+
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context);
 
         mLocationRequest = new LocationRequest();
@@ -69,29 +72,23 @@ public class LocationsWorker extends Worker {
 
         mDeferredLocationCallback = new DeferredLocationCallback();
 
-        mFusedLocationClient.requestLocationUpdates(
+        Task<Void> task = mFusedLocationClient.requestLocationUpdates(
                 mLocationRequest,
                 mDeferredLocationCallback,
                 Looper.getMainLooper()
         );
+
+        Tasks.await(task);
     }
 
     private void sendPing() {
-        String message = "WORKER PING: " + Utils.formateDate(new Date());
-        sendMessage(message);
+        String message = "WORKER PING: " + Utils.formatDate(new Date());
+        Utils.sendMessage(getApplicationContext(), message);
     }
 
     private void sendLocation(@NonNull Location location) {
         String message = "WORKER LOCATION: " + Utils.locationToString(location);
-        sendMessage(message);
-    }
-
-    private void sendMessage(String message) {
-        Log.d(TAG, message);
-
-        Intent intent = new Intent(Constants.ACTION_MESSAGE_BROADCAST);
-        intent.putExtra(Constants.EXTRA_MESSAGE, message);
-        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+        Utils.sendMessage(getApplicationContext(), message);
     }
 
     private class DeferredLocationCallback extends LocationCallback {
@@ -101,6 +98,7 @@ public class LocationsWorker extends Worker {
 
             // получаем накопленное и отписываемся от обновлений до след. запуска
             List<Location> locations = locationResult.getLocations();
+            mFusedLocationClient.flushLocations();
             mFusedLocationClient.removeLocationUpdates(mDeferredLocationCallback);
 
             Log.d(TAG, "locations size: " + locations.size());

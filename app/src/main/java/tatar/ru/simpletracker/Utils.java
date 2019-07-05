@@ -1,18 +1,22 @@
 package tatar.ru.simpletracker;
 
+import android.content.Context;
+import android.content.Intent;
 import android.location.Location;
 import android.text.format.DateFormat;
 
 import androidx.annotation.NonNull;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.util.Date;
 
+@SuppressWarnings("WeakerAccess")
 public class Utils {
     static String locationToString(@NonNull Location location) {
         StringBuilder sb = new StringBuilder();
 
         sb.append("time: ");
-        sb.append(Utils.formateDate(new Date()));
+        sb.append(Utils.formatDate(new Date()));
         sb.append("; ");
 
         sb.append("provider: ");
@@ -22,7 +26,7 @@ public class Utils {
         sb.append("signal time: ");
         sb.append(location.getTime());
         sb.append("-");
-        sb.append(Utils.formateDate(new Date(location.getTime())));
+        sb.append(Utils.formatDate(new Date(location.getTime())));
         sb.append("; ");
 
         sb.append("acc: ");
@@ -32,8 +36,14 @@ public class Utils {
         return sb.toString();
     }
 
-    public static String formateDate(@NonNull Date date) {
+    public static String formatDate(@NonNull Date date) {
         return (String) DateFormat.format("yyyy-MM-dd hh:mm:ss", date);
         //return (String) DateFormat.getDateTimeInstance(DATE_FORMAT, date);
+    }
+
+    public static void sendMessage(Context context, String message) {
+        Intent intent = new Intent(Constants.ACTION_MESSAGE_BROADCAST);
+        intent.putExtra(Constants.EXTRA_MESSAGE, message);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
     }
 }
