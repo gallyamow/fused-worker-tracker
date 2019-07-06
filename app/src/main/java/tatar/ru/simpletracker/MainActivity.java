@@ -72,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+
     private void subscribeToMessage() {
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, new IntentFilter(Constants.ACTION_MESSAGE_BROADCAST));
     }

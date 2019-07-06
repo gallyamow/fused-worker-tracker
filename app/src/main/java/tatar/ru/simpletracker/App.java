@@ -3,6 +3,7 @@ package tatar.ru.simpletracker;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Build;
 import android.util.Log;
 
@@ -35,6 +36,16 @@ public class App extends Application {
         // важно запускать в app
         startService();
         startWorker();
+    }
+
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
     }
 
     public static App getInstance() {
