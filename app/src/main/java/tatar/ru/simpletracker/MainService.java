@@ -12,6 +12,7 @@ import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.content.LocalBroadcastManager;
@@ -32,8 +33,10 @@ public class MainService extends Service implements LocationListener {
     static final String EXTRA_LOCATION = "location";
     static final String EXTRA_TIME = "time";
 
-    private static String CHANNEL_ID = "CHANNEL_ID";
-    private static int NOTIFICATION_ID = 22222;
+//    private static String CHANNEL_ID = "CHANNEL_ID";
+//    private static int NOTIFICATION_ID = 22222;
+
+    private static final int FOREGROUND_NOTIFICATION_ID = 777;
 
     private LocationManager mLocationManager;
     private ScheduledExecutorService pingScheduler;
@@ -72,34 +75,56 @@ public class MainService extends Service implements LocationListener {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
+    /**
+     * Превращает в сервис переднего плана, который не уничтожается при "смахивании" приложения.
+     */
+    @SuppressLint("ObsoleteSdkInt")
     private void makeForeground() {
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        NotificationChannel notificationChannel = new NotificationChannel(
-                CHANNEL_ID, CHANNEL_ID, NotificationManager.IMPORTANCE_HIGH
-        );
-
-        assert notificationManager != null;
-        notificationManager.createNotificationChannel(notificationChannel);
-        Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID);
-
-        startForeground(NOTIFICATION_ID, buildNotification(builder));
-    }
-
-    private Notification buildNotification(Notification.Builder builder) {
         Intent i = new Intent(this, MainActivity.class);
         i.setAction(Intent.ACTION_MAIN);
         i.addCategory(Intent.CATEGORY_LAUNCHER);
 
         PendingIntent intent = PendingIntent.getActivity(getApplicationContext(), 0, i, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        return builder
-                .setContentTitle("Test title")
-                .setContentText("Test description")
+        Notification.Builder builder = new Notification.Builder(this)
+                .setContentText(getString(R.string.app_name))
                 .setContentIntent(intent)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
-                .build();
+                .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher));
+
+        Notification notification = builder.build();
+
+        startForeground(FOREGROUND_NOTIFICATION_ID, notification);
     }
+
+//    private void makeForeground8() {
+//        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+//        NotificationChannel notificationChannel = new NotificationChannel(
+//                CHANNEL_ID, CHANNEL_ID, NotificationManager.IMPORTANCE_HIGH
+//        );
+//
+//        assert notificationManager != null;
+//        notificationManager.createNotificationChannel(notificationChannel);
+//        Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID);
+//
+//        startForeground(NOTIFICATION_ID, buildNotification(builder));
+//    }
+
+//    private Notification buildNotification(Notification.Builder builder) {
+//        Intent i = new Intent(this, MainActivity.class);
+//        i.setAction(Intent.ACTION_MAIN);
+//        i.addCategory(Intent.CATEGORY_LAUNCHER);
+//
+//        PendingIntent intent = PendingIntent.getActivity(getApplicationContext(), 0, i, PendingIntent.FLAG_UPDATE_CURRENT);
+//
+//        return builder
+//                .setContentTitle("Test title")
+//                .setContentText("Test description")
+//                .setContentIntent(intent)
+//                .setSmallIcon(R.mipmap.ic_launcher)
+//                .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
+//                .build();
+//    }
 
     private void startPing() {
         pingScheduler = Executors.newSingleThreadScheduledExecutor();
